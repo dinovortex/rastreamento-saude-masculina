@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rastreamento de Saúde Masculina</title>
+<style>
+:root{
+  --bg:#f4f6f5; --card:#ffffff; --ink:#1c2622; --sub:#5b6b64;
+  --green:#2e9e5b; --yellow:#e3a91b; --red:#d64545;
+  --line:#e2e7e4; --accent:#1f3b2e;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14181a; --card:#1e2422; --ink:#eef2ef; --sub:#a6b3ac;
+    --line:#2c332f; --accent:#7fd9a4;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14181a; --card:#1e2422; --ink:#eef2ef; --sub:#a6b3ac;
+  --line:#2c332f; --accent:#7fd9a4;
+}
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100%;}
+.wrap{max-width:640px;margin:0 auto;padding:24px 16px 48px;}
+h1{font-size:1.4rem;margin:.2em 0 0;}
+.tag{color:var(--sub);font-size:.85rem;margin-bottom:18px;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;}
+.progress-outer{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin:10px 0 20px;}
+.progress-inner{height:100%;background:var(--accent);transition:width .25s ease;width:0%;}
+.domain-label{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--sub);margin-bottom:6px;}
+.qtext{font-size:1.08rem;line-height:1.4;margin:4px 0 18px;min-height:2.6em;}
+.opts{display:flex;flex-direction:column;gap:10px;}
+.opt{border:2px solid var(--line);border-radius:12px;padding:14px 16px;font-size:.98rem;font-weight:600;display:flex;align-items:center;gap:10px;cursor:pointer;background:transparent;color:var(--ink);width:100%;text-align:left;}
+.opt:active{transform:scale(.98);}
+.dot{width:14px;height:14px;border-radius:50%;flex:none;}
+.opt.green{border-color:var(--green);} .opt.green .dot{background:var(--green);}
+.opt.yellow{border-color:var(--yellow);} .opt.yellow .dot{background:var(--yellow);}
+.opt.red{border-color:var(--red);} .opt.red .dot{background:var(--red);}
+.opt.sel.green{background:var(--green);color:#fff;}
+.opt.sel.yellow{background:var(--yellow);color:#2b2100;}
+.opt.sel.red{background:var(--red);color:#fff;}
+.navrow{display:flex;justify-content:space-between;margin-top:14px;gap:10px;}
+.navbtn{border:none;border-radius:10px;padding:12px 18px;font-size:.95rem;font-weight:600;cursor:pointer;background:var(--line);color:var(--ink);}
+.navbtn.primary{background:var(--accent);color:#fff;}
+.navbtn:disabled{opacity:.4;}
+.hide{display:none;}
+.result-head{text-align:center;margin-bottom:14px;}
+.result-head .big{font-size:2.4rem;font-weight:800;}
+.result-head .lvl{font-weight:700;font-size:1.1rem;margin-top:2px;}
+.bar-row{margin-bottom:12px;}
+.bar-row .lbl{display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:4px;}
+.bar-outer{height:10px;background:var(--line);border-radius:6px;overflow:hidden;}
+.bar-inner{height:100%;border-radius:6px;}
+.priority{border-left:4px solid var(--red);background:rgba(214,69,69,.08);border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:10px;}
+.priority h3{margin:0 0 4px;font-size:1rem;}
+.priority p{margin:0;font-size:.88rem;color:var(--sub);}
+.note{font-size:.8rem;color:var(--sub);margin-top:18px;line-height:1.5;}
+.restart{margin-top:18px;width:100%;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Rastreamento de Saúde Masculina</h1>
+  <div class="tag">120 perguntas rápidas. Toque na cor que mais combina com você.</div>
+
+  <div id="quizScreen">
+    <div class="progress-outer"><div class="progress-inner" id="progress"></div></div>
+    <div class="card">
+      <div class="domain-label" id="domainLabel"></div>
+      <div class="qtext" id="qtext"></div>
+      <div class="opts">
+        <button class="opt green" data-v="0"><span class="dot"></span>Tudo certo</button>
+        <button class="opt yellow" data-v="1"><span class="dot"></span>Mais ou menos</button>
+        <button class="opt red" data-v="2"><span class="dot"></span>Isso é comigo</button>
+      </div>
+    </div>
+    <div class="navrow">
+      <button class="navbtn" id="backBtn">Voltar</button>
+      <button class="navbtn primary" id="nextBtn" disabled>Próxima</button>
+    </div>
+  </div>
+
+  <div id="resultScreen" class="hide">
+    <div class="card result-head">
+      <div class="big" id="scorePct">0%</div>
+      <div class="lvl" id="scoreLvl">carga de sintomas</div>
+    </div>
+    <div class="card">
+      <div class="domain-label">Panorama por área</div>
+      <div id="barsWrap"></div>
+    </div>
+    <div class="card">
+      <div class="domain-label">Onde focar primeiro</div>
+      <div id="priorityWrap"></div>
+      <div class="note">Isto é uma triagem organizacional, não um diagnóstico. Áreas em vermelho ou com sinais agudos (dor no peito, falta de ar, sangue na urina ou fezes, desmaio) merecem avaliação profissional o quanto antes.</div>
+    </div>
+    <button class="navbtn primary restart" id="restartBtn">Refazer</button>
+  </div>
+</div>
+
+<script>
+const DOMAINS = [
+["Energia e desempenho",[
+"Acorda cansado mesmo dormindo o suficiente",
+"Sente a energia despencar no meio da tarde",
+"Precisa de café para conseguir funcionar",
+"Fica exausto mesmo em dias de descanso",
+"Um treino leve já deixa você arrasado",
+"Notou queda de disposição comparado a antes",
+"Energia sobe e desce muito no mesmo dia",
+"Dificuldade de manter o rendimento até o fim do dia",
+"Tontura ou sensação de desmaio com frequência",
+"Cansaço vem junto com tremor, suor ou fome súbita"]],
+["Sono e recuperação",[
+"Demora para pegar no sono",
+"Acorda várias vezes de madrugada",
+"Acorda cansado mesmo dormindo bastante",
+"Ronca alto ou já notaram pausas na respiração",
+"Acorda com boca seca ou dor de cabeça",
+"Acorda com o coração acelerado",
+"Levanta à noite para urinar",
+"Fica no celular até a hora de dormir",
+"Horário de dormir muda bastante ao longo da semana",
+"Tem sono excessivo durante o dia"]],
+["Peso e metabolismo",[
+"Peso mudou sem você planejar",
+"Barriga aumentou recentemente",
+"Fica com muita fome logo após comer",
+"Fica trêmulo ou irritado quando passa horas sem comer",
+"Vontade forte de doce depois das refeições",
+"Dificuldade de ganhar músculo mesmo treinando direito",
+"Dificuldade de perder gordura mesmo se cuidando",
+"Notou manchas escuras no pescoço ou virilha",
+"Já teve pressão, glicemia ou colesterol alterados",
+"Tem histórico de diabetes ou doença cardíaca na família"]],
+["Intestino e digestão",[
+"Fica estufado depois de comer",
+"Enche rápido, com poucas garfadas",
+"Sente a comida parada no estômago",
+"Azia ou refluxo com frequência",
+"Usa remédio para azia com frequência",
+"Gases ou arrotos em excesso",
+"Prisão de ventre",
+"Diarreia ou urgência para evacuar",
+"Fezes mudaram de cor ou consistência",
+"Já notou sangue nas fezes ou dor abdominal forte"]],
+["Próstata e urina",[
+"Urina com muita frequência de dia",
+"Levanta duas ou mais vezes à noite para urinar",
+"Urgência forte para urinar",
+"Demora para começar o jato",
+"Jato mais fraco ou interrompido",
+"Sensação de bexiga não esvaziar de vez",
+"Dor ou ardência ao urinar",
+"Já notou sangue na urina",
+"Dor persistente na região pélvica ou baixo ventre",
+"Tem histórico de doença de próstata na família"]],
+["Libido e vida sexual",[
+"Libido caiu nos últimos tempos",
+"Ereções matinais diminuíram",
+"Dificuldade de manter a ereção",
+"Notou queda no desempenho sexual",
+"Queda de libido junto com queda de energia",
+"Perda de força ou músculo junto com isso",
+"Sente dor durante o sexo",
+"Notou alteração nos testículos, dor ou caroço",
+"Usa hormônio, anabolizante ou remédio que mexe nisso",
+"Preocupação atual com fertilidade"]],
+["Coração e respiração",[
+"Sente palpitação ou batimento irregular",
+"Coração dispara sem motivo aparente",
+"Falta de ar em esforços que antes eram fáceis",
+"Falta de ar mesmo parado",
+"Dor ou pressão no peito",
+"Tontura forte durante esforço físico",
+"Inchaço nas pernas ou tornozelos",
+"Pressão alta já diagnosticada",
+"Fuma ou tem exposição forte a fumaça",
+"Histórico de infarto ou AVC na família"]],
+["Mente e estresse",[
+"Dificuldade de concentração ou decisão",
+"Memória mais fraca ultimamente",
+"Sensação de névoa mental",
+"Irritação fácil, pavio curto",
+"Ansiedade quase todo dia",
+"Dificuldade de relaxar mesmo com tempo livre",
+"Se assusta ou fica em alerta fácil",
+"Perdeu interesse em coisas que gostava",
+"Passou por perda, briga ou mudança forte recente",
+"Sente que só está sobrevivendo o dia"]],
+["Dor e capacidade física",[
+"Dor muscular sem motivo claro",
+"Acorda travado ou com dor nas juntas",
+"Dor lombar frequente",
+"Dor no pescoço, ombro ou mandíbula",
+"Formigamento ou choque pelo corpo",
+"Perda de força ou resistência",
+"Demora muito para se recuperar do treino",
+"Dor que atrapalha o dia a dia",
+"Lesão antiga ainda incomoda",
+"Parou de fazer atividade que fazia antes"]],
+["Pele, cabelo e imunidade",[
+"Queda de cabelo maior que o normal",
+"Mudança na textura do cabelo",
+"Acne ou alteração de pele recente",
+"Pele seca ou coceira persistente",
+"Sua demais sem relação com calor",
+"Sente frio ou calor de forma diferente do normal",
+"Fica doente com frequência",
+"Demora para melhorar de gripe ou resfriado",
+"Gânglios inchados",
+"Notou algo novo no corpo que não investigou"]],
+["Medicamentos e hábitos",[
+"Usa remédio todo dia ou quando precisa",
+"Usa anti-inflamatório, analgésico ou remédio para dormir",
+"Usa remédio de pressão, colesterol ou próstata",
+"Já usou remédio pesado para acne",
+"Tomou antibiótico recentemente",
+"Usa álcool, cigarro ou outra substância com frequência",
+"Usa hormônio, testosterona ou anabolizante",
+"Toma suplemento sem saber a dose certa",
+"Teve cirurgia ou internação recente",
+"Suspeita de algum remédio causando sintoma"]],
+["Rotina e ambiente",[
+"Dorme poucas horas por noite",
+"Toma café à tarde ou à noite",
+"Passa o dia quase todo sentado",
+"Não treina com regularidade",
+"Pega pouco sol ou ar livre",
+"Pula refeição ou belisca o dia todo",
+"Consome bastante ultraprocessado, refrigerante ou álcool",
+"Trabalha exposto a poeira, produto químico ou mofo",
+"Passou por mudança grande na vida recentemente",
+"Tem algo que adoraria voltar a fazer se a saúde melhorasse"]]
+];
+
+let idx=0, answers=[];
+DOMAINS.forEach(d=>answers.push(new Array(d[1].length).fill(null)));
+const flat=[];
+DOMAINS.forEach((d,di)=>d[1].forEach((q,qi)=>flat.push({di,qi,q,label:d[0]})));
+
+const qtext=document.getElementById('qtext'), domainLabel=document.getElementById('domainLabel');
+const nextBtn=document.getElementById('nextBtn'), backBtn=document.getElementById('backBtn');
+const progress=document.getElementById('progress');
+const opts=document.querySelectorAll('.opt');
+
+function render(){
+  const item=flat[idx];
+  domainLabel.textContent=item.label+' · '+(idx+1)+'/'+flat.length;
+  qtext.textContent=item.q;
+  progress.style.width=((idx)/flat.length*100)+'%';
+  const cur=answers[item.di][item.qi];
+  opts.forEach(o=>{
+    o.classList.toggle('sel', cur!==null && Number(o.dataset.v)===cur);
+  });
+  nextBtn.disabled = cur===null;
+  nextBtn.textContent = idx===flat.length-1 ? 'Ver resultado' : 'Próxima';
+  backBtn.disabled = idx===0;
+}
+
+opts.forEach(o=>{
+  o.addEventListener('click',()=>{
+    const item=flat[idx];
+    answers[item.di][item.qi]=Number(o.dataset.v);
+    render();
+    setTimeout(()=>{ if(idx<flat.length-1){idx++;render();} else {showResults();} },180);
+  });
+});
+backBtn.addEventListener('click',()=>{ if(idx>0){idx--;render();} });
+nextBtn.addEventListener('click',()=>{
+  if(idx<flat.length-1){idx++;render();} else {showResults();}
+});
+
+function levelFromPct(p){
+  if(p<=10) return {word:'Carga mínima', color:'green'};
+  if(p<=25) return {word:'Carga baixa', color:'green'};
+  if(p<=50) return {word:'Carga moderada', color:'yellow'};
+  return {word:'Carga elevada', color:'red'};
+}
+
+function showResults(){
+  document.getElementById('quizScreen').classList.add('hide');
+  const screen=document.getElementById('resultScreen');
+  screen.classList.remove('hide');
+
+  let total=0, max=0;
+  const domainScores = DOMAINS.map((d,di)=>{
+    const sum=answers[di].reduce((a,b)=>a+b,0);
+    const m=d[1].length*2;
+    total+=sum; max+=m;
+    return {label:d[0], sum, max:m, pct: Math.round(sum/m*100)};
+  });
+  const overallPct=Math.round(total/max*100);
+  const lvl=levelFromPct(overallPct);
+  document.getElementById('scorePct').textContent=overallPct+'%';
+  document.getElementById('scorePct').style.color='var(--'+lvl.color+')';
+  document.getElementById('scoreLvl').textContent=lvl.word+' de sintomas ('+total+' de '+max+' pontos)';
+
+  const barsWrap=document.getElementById('barsWrap');
+  barsWrap.innerHTML='';
+  const sorted=[...domainScores].sort((a,b)=>b.pct-a.pct);
+  domainScores.forEach(d=>{
+    const l=levelFromPct(d.pct);
+    const row=document.createElement('div');
+    row.className='bar-row';
+    row.innerHTML=`<div class="lbl"><span>${d.label}</span><span>${d.pct}%</span></div>
+      <div class="bar-outer"><div class="bar-inner" style="width:${d.pct}%;background:var(--${l.color})"></div></div>`;
+    barsWrap.appendChild(row);
+  });
+
+  const priorityWrap=document.getElementById('priorityWrap');
+  priorityWrap.innerHTML='';
+  const top=sorted.filter(d=>d.pct>25).slice(0,3);
+  if(top.length===0){
+    priorityWrap.innerHTML='<p style="color:var(--sub);font-size:.9rem;">Nenhuma área se destacou como prioridade. Isso não substitui avaliação clínica, mas é um bom sinal.</p>';
+  } else {
+    top.forEach(d=>{
+      const box=document.createElement('div');
+      box.className='priority';
+      box.innerHTML=`<h3>${d.label}</h3><p>${d.pct}% de carga nesta área. Vale investigar com mais atenção e considerar avaliação profissional.</p>`;
+      priorityWrap.appendChild(box);
+    });
+  }
+  progress.style.width='100%';
+}
+
+document.getElementById('restartBtn').addEventListener('click',()=>{
+  idx=0; answers=DOMAINS.map(d=>new Array(d[1].length).fill(null));
+  document.getElementById('resultScreen').classList.add('hide');
+  document.getElementById('quizScreen').classList.remove('hide');
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
